@@ -37,20 +37,23 @@ export async function onRequestGet(context) {
 
         if (!assetResponse.ok) {
             if (assetResponse.status === 404) {
-                return new Response(`
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Not Found</title><style>body { font-family: sans-serif; text-align: center; padding: 2rem; }</style></head>
-                    <body><h1>Device not found</h1><p>The asset tag ${targetTag} is unknown in the system.</p></body>
-                    </html>
-                `, { status: 404, headers: { 'Content-Type': 'text/html' } });
+                return new Response('Device not found', { status: 404 });
             }
             throw new Error(`API Error: ${assetResponse.status}`);
         }
 
         const data = await assetResponse.json();
+        
         const assetName = data.name || 'No name assigned';
+        const manufacturer = data.manufacturer && data.manufacturer.name ? data.manufacturer.name : 'Unknown Manufacturer';
+        
+        // Snipe-IT liefert die model_number manchmal in data.model_number 
+        // oder in data.model.model_number
         const modelName = data.model && data.model.name ? data.model.name : 'Unknown model';
+        const rawModelNumber = data.model_number || (data.model && data.model.model_number) || null;
+        const modelNumberDisplay = rawModelNumber ? ` [${rawModelNumber}]` : '';
+        const fullModelDisplay = modelName + modelNumberDisplay;
+
         const statusLabel = data.status_label && data.status_label.name ? data.status_label.name : 'Unknown';
         const statusMeta = data.status_label && data.status_label.status_meta ? data.status_label.status_meta : '';
         const company = data.company && data.company.name ? data.company.name : 'No organization assigned';
@@ -86,7 +89,6 @@ export async function onRequestGet(context) {
             }
         }
 
-        // Only show banner for LOST case
         let bannerHtml = isLost ? `<div class="status-banner lost-banner"><strong>⚠️ ATTENTION:</strong> This device has been reported as LOST.</div>` : '';
 
         const html = `
@@ -100,11 +102,7 @@ export async function onRequestGet(context) {
                 :root { 
                     --primary: #0056b3; --bg: #f4f7f6; --card: #fff; --text: #333; --muted: #666; --border: #e1e4e8;
                     --lost-bg: #fee2e2; --lost-text: #b91c1c;
-                    --deployable: #10b981;   /* Green */
-                    --deployed: #3b82f6;     /* Blue */
-                    --pending: #f59e0b;      /* Orange */
-                    --undeployable: #ef4444; /* Red */
-                    --archived: #6b7280;     /* Grey */
+                    --deployable: #10b981; --deployed: #3b82f6; --pending: #f59e0b; --undeployable: #ef4444; --archived: #6b7280;
                 }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
                 body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 1rem; display: flex; justify-content: center; }
@@ -138,7 +136,8 @@ export async function onRequestGet(context) {
                     <div class="card-body">
                         <div class="data-grid">
                             <div class="data-row"><span class="label">Name</span><span class="value">${assetName}</span></div>
-                            <div class="data-row"><span class="label">Model</span><span class="value">${modelName}</span></div>
+                            <div class="data-row"><span class="label">Manufacturer</span><span class="value">${manufacturer}</span></div>
+                            <div class="data-row"><span class="label">Model</span><span class="value">${fullModelDisplay}</span></div>
                             <div class="data-row"><span class="label">Serial</span><span class="value">${serial}</span></div>
                             <div class="data-row"><span class="label">Status</span><span class="value">${statusLabel} <span class="badge meta-${statusMeta}">${statusMeta}</span></span></div>
                             <div class="data-row"><span class="label">Owner</span><span class="value">${company}</span></div>
