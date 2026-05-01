@@ -46,9 +46,6 @@ export async function onRequestGet(context) {
         
         const assetName = data.name || 'No name assigned';
         const manufacturer = data.manufacturer && data.manufacturer.name ? data.manufacturer.name : 'Unknown Manufacturer';
-        
-        // Snipe-IT liefert die model_number manchmal in data.model_number 
-        // oder in data.model.model_number
         const modelName = data.model && data.model.name ? data.model.name : 'Unknown model';
         const rawModelNumber = data.model_number || (data.model && data.model.model_number) || null;
         const modelNumberDisplay = rawModelNumber ? ` [${rawModelNumber}]` : '';
@@ -57,13 +54,43 @@ export async function onRequestGet(context) {
         const statusLabel = data.status_label && data.status_label.name ? data.status_label.name : 'Unknown';
         const statusMeta = data.status_label && data.status_label.status_meta ? data.status_label.status_meta : '';
         const company = data.company && data.company.name ? data.company.name : 'No organization assigned';
-        const assignedTo = data.assigned_to && data.assigned_to.name ? data.assigned_to.name : null;
         const location = data.location && data.location.name ? data.location.name : null;
         const serial = data.serial || 'No serial number';
         const assetNotes = data.notes || '';
         
         const isLost = statusLabel.toLowerCase().includes('lost');
 
+        // Fetch user details if assigned to a person
+        let assignedToDisplay = null;
+        if (data.assigned_to && data.assigned_to.type === 'user') {
+            const userResponse = await fetch(`${env.SNIPEIT_URL}/api/v1/users/${data.assigned_to.id}`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${env.SNIPEIT_TOKEN}`, 'Accept': 'application/json' }
+            });
+            
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                const userName = userData.name || data.assigned_to.name;
+                const userWebsite = userData.website;
+                const userPhone = userData.phone;
+
+                if (userWebsite) {
+                    assignedToDisplay = `<a href="${userWebsite}" target="_blank" rel="noopener noreferrer" class="user-link">${userName}</a>`;
+                } else {
+                    assignedToDisplay = userName;
+                }
+
+                if (userPhone) {
+                    assignedToDisplay += ` (<a href="tel:${userPhone}" class="user-phone">${userPhone}</a>)`;
+                }
+            } else {
+                assignedToDisplay = data.assigned_to.name;
+            }
+        } else if (data.assigned_to) {
+            assignedToDisplay = data.assigned_to.name;
+        }
+
+        // Fetch company details
         let supportEmail = null, supportPhone = null, companyNotes = '';
         if (data.company && data.company.id) {
             const companyResp = await fetch(`${env.SNIPEIT_URL}/api/v1/companies/${data.company.id}`, {
@@ -125,6 +152,9 @@ export async function onRequestGet(context) {
                 .meta-archived { background: var(--archived); }
                 .contact-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 2px dashed var(--border); text-align: center; }
                 .contact-section h2 { color: var(--primary); font-size: 1.2rem; margin-bottom: 0.5rem; }
+                .user-link { color: var(--primary); text-decoration: none; border-bottom: 1px solid transparent; }
+                .user-link:hover { border-bottom-color: var(--primary); }
+                .user-phone { color: var(--text); text-decoration: none; font-size: 0.95rem; font-weight: normal; }
                 @media (min-width: 600px) { .data-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; } }
             </style>
         </head>
@@ -141,7 +171,7 @@ export async function onRequestGet(context) {
                             <div class="data-row"><span class="label">Serial</span><span class="value">${serial}</span></div>
                             <div class="data-row"><span class="label">Status</span><span class="value">${statusLabel} <span class="badge meta-${statusMeta}">${statusMeta}</span></span></div>
                             <div class="data-row"><span class="label">Owner</span><span class="value">${company}</span></div>
-                            ${assignedTo ? `<div class="data-row"><span class="label">Assigned To</span><span class="value">${assignedTo}</span></div>` : ''}
+                            ${assignedToDisplay ? `<div class="data-row"><span class="label">Assigned To</span><span class="value">${assignedToDisplay}</span></div>` : ''}
                             ${location ? `<div class="data-row"><span class="label">Location</span><span class="value">${location}</span></div>` : ''}
                         </div>
                         ${contactHtml}
