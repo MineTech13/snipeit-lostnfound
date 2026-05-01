@@ -44,23 +44,21 @@ export async function onRequestGet(context) {
 
         const data = await assetResponse.json();
         
-        const assetName = data.name || 'No name assigned';
-        const manufacturer = data.manufacturer && data.manufacturer.name ? data.manufacturer.name : 'Unknown Manufacturer';
-        const modelName = data.model && data.model.name ? data.model.name : 'Unknown model';
+        // Basic Data
+        const assetName = data.name || null;
+        const manufacturer = data.manufacturer && data.manufacturer.name ? data.manufacturer.name : null;
+        const modelName = data.model && data.model.name ? data.model.name : null;
         const rawModelNumber = data.model_number || (data.model && data.model.model_number) || null;
-        const modelNumberDisplay = rawModelNumber ? ` [${rawModelNumber}]` : '';
-        const fullModelDisplay = modelName + modelNumberDisplay;
-
-        const statusLabel = data.status_label && data.status_label.name ? data.status_label.name : 'Unknown';
-        const statusMeta = data.status_label && data.status_label.status_meta ? data.status_label.status_meta : '';
-        const company = data.company && data.company.name ? data.company.name : 'No organization assigned';
+        const serial = data.serial || null;
+        const company = data.company && data.company.name ? data.company.name : null;
         const location = data.location && data.location.name ? data.location.name : null;
-        const serial = data.serial || 'No serial number';
+        const statusLabel = data.status_label && data.status_label.name ? data.status_label.name : null;
+        const statusMeta = data.status_label && data.status_label.status_meta ? data.status_label.status_meta : '';
         const assetNotes = data.notes || '';
         
-        const isLost = statusLabel.toLowerCase().includes('lost');
+        const isLost = statusLabel && statusLabel.toLowerCase().includes('lost');
 
-        // Fetch user details if assigned to a person
+        // Extended User Data
         let assignedToDisplay = null;
         if (data.assigned_to && data.assigned_to.type === 'user') {
             const userResponse = await fetch(`${env.SNIPEIT_URL}/api/v1/users/${data.assigned_to.id}`, {
@@ -74,11 +72,9 @@ export async function onRequestGet(context) {
                 const userWebsite = userData.website;
                 const userPhone = userData.phone;
 
-                if (userWebsite) {
-                    assignedToDisplay = `<a href="${userWebsite}" target="_blank" rel="noopener noreferrer" class="user-link">${userName}</a>`;
-                } else {
-                    assignedToDisplay = userName;
-                }
+                assignedToDisplay = userWebsite 
+                    ? `<a href="${userWebsite}" target="_blank" rel="noopener noreferrer" class="user-link">${userName}</a>`
+                    : userName;
 
                 if (userPhone) {
                     assignedToDisplay += ` (<a href="tel:${userPhone}" class="user-phone">${userPhone}</a>)`;
@@ -90,7 +86,7 @@ export async function onRequestGet(context) {
             assignedToDisplay = data.assigned_to.name;
         }
 
-        // Fetch company details
+        // Company Support Data
         let supportEmail = null, supportPhone = null, companyNotes = '';
         if (data.company && data.company.id) {
             const companyResp = await fetch(`${env.SNIPEIT_URL}/api/v1/companies/${data.company.id}`, {
@@ -102,10 +98,28 @@ export async function onRequestGet(context) {
             }
         }
 
+        // Contact Logic
         const assetConfig = parseContactConfig(assetNotes);
         const companyConfig = parseContactConfig(companyNotes);
         let showContact = assetConfig.hide ? false : (assetConfig.show || assetConfig.customText ? true : (companyConfig.hide ? false : (companyConfig.show || companyConfig.customText ? true : isLost)));
         let customContactText = assetConfig.customText || companyConfig.customText;
+
+        // Row Generation (Only if value exists)
+        const rows = [
+            { label: 'Name', value: assetName },
+            { label: 'Manufacturer', value: manufacturer },
+            { label: 'Model', value: modelName ? `${modelName}${rawModelNumber ? ` [${rawModelNumber}]` : ''}` : null },
+            { label: 'Serial', value: serial },
+            { label: 'Status', value: statusLabel ? `${statusLabel} <span class="badge meta-${statusMeta}">${statusMeta}</span>` : null },
+            { label: 'Owner', value: company },
+            { label: 'Assigned To', value: assignedToDisplay },
+            { label: 'Location', value: location }
+        ];
+
+        const rowsHtml = rows
+            .filter(row => row.value !== null && row.value !== '')
+            .map(row => `<div class="data-row"><span class="label">${row.label}</span><span class="value">${row.value}</span></div>`)
+            .join('');
 
         let contactHtml = '';
         if (showContact) {
@@ -164,16 +178,7 @@ export async function onRequestGet(context) {
                     <div class="card-header"><h1>Device Information</h1><p>Tag: ${targetTag}</p></div>
                     ${bannerHtml}
                     <div class="card-body">
-                        <div class="data-grid">
-                            <div class="data-row"><span class="label">Name</span><span class="value">${assetName}</span></div>
-                            <div class="data-row"><span class="label">Manufacturer</span><span class="value">${manufacturer}</span></div>
-                            <div class="data-row"><span class="label">Model</span><span class="value">${fullModelDisplay}</span></div>
-                            <div class="data-row"><span class="label">Serial</span><span class="value">${serial}</span></div>
-                            <div class="data-row"><span class="label">Status</span><span class="value">${statusLabel} <span class="badge meta-${statusMeta}">${statusMeta}</span></span></div>
-                            <div class="data-row"><span class="label">Owner</span><span class="value">${company}</span></div>
-                            ${assignedToDisplay ? `<div class="data-row"><span class="label">Assigned To</span><span class="value">${assignedToDisplay}</span></div>` : ''}
-                            ${location ? `<div class="data-row"><span class="label">Location</span><span class="value">${location}</span></div>` : ''}
-                        </div>
+                        <div class="data-grid">${rowsHtml}</div>
                         ${contactHtml}
                     </div>
                 </div>
