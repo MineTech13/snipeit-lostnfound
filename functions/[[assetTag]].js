@@ -11,16 +11,75 @@ function parseContactConfig(notes) {
     return { hide, show, customText };
 }
 
+function getSearchPageHtml() {
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Asset Lookup</title>
+        <script src="https://unpkg.com/html5-qrcode"></script>
+        <style>
+            :root { --primary: #0056b3; --bg: #f4f7f6; --card: #fff; --text: #333; }
+            body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 2rem 1rem; }
+            .container { width: 100%; max-width: 500px; text-align: center; }
+            .card { background: var(--card); border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); padding: 2rem; }
+            h1 { margin-bottom: 1.5rem; color: var(--primary); }
+            .search-box { display: flex; gap: 8px; margin-bottom: 2rem; }
+            input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+            button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+            #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-top: 1rem; border: 1px solid #eee; }
+            .hint { font-size: 0.9rem; color: #666; margin-top: 1rem; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <h1>Asset Lookup</h1>
+                <form onsubmit="event.preventDefault(); window.location.href='/' + document.getElementById('tagInput').value;">
+                    <div class="search-box">
+                        <input type="text" id="tagInput" placeholder="Enter Asset Tag (e.g. 12345)" required>
+                        <button type="submit">Go</button>
+                    </div>
+                </form>
+                <hr style="border:0; border-top:1px solid #eee; margin: 2rem 0;">
+                <h3>Scan QR / DataMatrix</h3>
+                <div id="reader"></div>
+                <p class="hint">Please grant camera access to scan codes.</p>
+            </div>
+        </div>
+        <script>
+            function onScanSuccess(decodedText) {
+                // Falls der Scan eine komplette URL ist, extrahieren wir den letzten Teil
+                let tag = decodedText;
+                if (tag.includes('/')) {
+                    tag = tag.split('/').pop();
+                }
+                html5QrcodeScanner.clear();
+                window.location.href = "/" + tag;
+            }
+
+            let html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+            html5QrcodeScanner.render(onScanSuccess);
+        </script>
+    </body>
+    </html>
+    `;
+}
+
 export async function onRequestGet(context) {
     const assetTag = context.params.assetTag;
     const env = context.env;
 
-    if (!env.SNIPEIT_URL || !env.SNIPEIT_TOKEN) {
-        return new Response('Configuration Error: Missing environment variables.', { status: 500 });
+    // 1. Wenn kein Asset Tag vorhanden ist, Suchseite anzeigen
+    if (!assetTag || assetTag.length === 0 || assetTag[0] === "") {
+        return new Response(getSearchPageHtml(), { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
     }
 
-    if (!assetTag || assetTag.length === 0) {
-         return new Response('Please provide an asset tag in the URL.', { status: 400 });
+    if (!env.SNIPEIT_URL || !env.SNIPEIT_TOKEN) {
+        return new Response('Configuration Error: Missing environment variables.', { status: 500 });
     }
 
     try {
@@ -37,58 +96,50 @@ export async function onRequestGet(context) {
 
         if (!assetResponse.ok) {
             if (assetResponse.status === 404) {
-                return new Response('Device not found', { status: 404 });
+                // Bei 404 zurück zur Suche mit Hinweis
+                return new Response(getSearchPageHtml().replace('placeholder="', 'placeholder="Tag not found, try again: '), { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
             }
             throw new Error(`API Error: ${assetResponse.status}`);
         }
 
         const data = await assetResponse.json();
         
-        // Basic Data
+        // Asset-Daten Extraktion
         const assetName = data.name || null;
-        const manufacturer = data.manufacturer && data.manufacturer.name ? data.manufacturer.name : null;
-        const modelName = data.model && data.model.name ? data.model.name : null;
-        const rawModelNumber = data.model_number || (data.model && data.model.model_number) || null;
+        const manufacturer = data.manufacturer?.name || null;
+        const modelName = data.model?.name || null;
+        const rawModelNumber = data.model_number || data.model?.model_number || null;
         const serial = data.serial || null;
-        const company = data.company && data.company.name ? data.company.name : null;
-        const location = data.location && data.location.name ? data.location.name : null;
-        const statusLabel = data.status_label && data.status_label.name ? data.status_label.name : null;
-        const statusMeta = data.status_label && data.status_label.status_meta ? data.status_label.status_meta : '';
+        const company = data.company?.name || null;
+        const location = data.location?.name || null;
+        const statusLabel = data.status_label?.name || null;
+        const statusMeta = data.status_label?.status_meta || '';
         const assetNotes = data.notes || '';
         
-        const isLost = statusLabel && statusLabel.toLowerCase().includes('lost');
+        const isLost = statusLabel?.toLowerCase().includes('lost');
 
-        // Extended User Data
+        // User Details
         let assignedToDisplay = null;
         if (data.assigned_to && data.assigned_to.type === 'user') {
             const userResponse = await fetch(`${env.SNIPEIT_URL}/api/v1/users/${data.assigned_to.id}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${env.SNIPEIT_TOKEN}`, 'Accept': 'application/json' }
             });
-            
             if (userResponse.ok) {
                 const userData = await userResponse.json();
                 const userName = userData.name || data.assigned_to.name;
-                const userWebsite = userData.website;
-                const userPhone = userData.phone;
-
-                assignedToDisplay = userWebsite 
-                    ? `<a href="${userWebsite}" target="_blank" rel="noopener noreferrer" class="user-link">${userName}</a>`
+                assignedToDisplay = userData.website 
+                    ? `<a href="${userData.website}" target="_blank" rel="noopener noreferrer" class="user-link">${userName}</a>`
                     : userName;
-
-                if (userPhone) {
-                    assignedToDisplay += ` (<a href="tel:${userPhone}" class="user-phone">${userPhone}</a>)`;
-                }
-            } else {
-                assignedToDisplay = data.assigned_to.name;
+                if (userData.phone) assignedToDisplay += ` (<a href="tel:${userData.phone}" class="user-phone">${userData.phone}</a>)`;
             }
         } else if (data.assigned_to) {
             assignedToDisplay = data.assigned_to.name;
         }
 
-        // Company Support Data
+        // Company Support
         let supportEmail = null, supportPhone = null, companyNotes = '';
-        if (data.company && data.company.id) {
+        if (data.company?.id) {
             const companyResp = await fetch(`${env.SNIPEIT_URL}/api/v1/companies/${data.company.id}`, {
                 method: 'GET', headers: { 'Authorization': `Bearer ${env.SNIPEIT_TOKEN}`, 'Accept': 'application/json' }
             });
@@ -104,7 +155,6 @@ export async function onRequestGet(context) {
         let showContact = assetConfig.hide ? false : (assetConfig.show || assetConfig.customText ? true : (companyConfig.hide ? false : (companyConfig.show || companyConfig.customText ? true : isLost)));
         let customContactText = assetConfig.customText || companyConfig.customText;
 
-        // Row Generation (Only if value exists)
         const rows = [
             { label: 'Name', value: assetName },
             { label: 'Manufacturer', value: manufacturer },
@@ -117,7 +167,7 @@ export async function onRequestGet(context) {
         ];
 
         const rowsHtml = rows
-            .filter(row => row.value !== null && row.value !== '')
+            .filter(row => row.value)
             .map(row => `<div class="data-row"><span class="label">${row.label}</span><span class="value">${row.value}</span></div>`)
             .join('');
 
@@ -181,6 +231,9 @@ export async function onRequestGet(context) {
                         <div class="data-grid">${rowsHtml}</div>
                         ${contactHtml}
                     </div>
+                </div>
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button onclick="window.location.href='/'" style="background: none; border: 1px solid var(--primary); color: var(--primary); padding: 8px 16px; border-radius: 8px; cursor: pointer;">Search Another Asset</button>
                 </div>
             </div>
         </body>
