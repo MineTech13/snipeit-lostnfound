@@ -1,0 +1,11 @@
+{
+  "name": "snipeit-lostnfound",
+  "version": "1.0.0",
+  "main": "functions/[[assetTag]].js",
+  "scripts": {
+    "dev": "wrangler pages dev public/ --port 3000"
+  },
+  "devDependencies": {
+    "wrangler": "^4.87.0"
+  }
+}
