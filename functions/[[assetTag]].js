@@ -194,7 +194,16 @@ export async function onRequestGet(context) {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Asset Info: ${targetTag}</title>
+            
+            <!-- Lade html2canvas um das Label als Bild zu rendern -->
             <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+            
+            <!-- Dynamischer Import von thermoprint als ES Module Fallback -->
+            <script type="module">
+                import * as tp from 'https://esm.sh/gh/tomladder/thermoprint@main/packages/core';
+                window.ThermoPrint = tp;
+            </script>
+
             <style>
                 :root { 
                     --primary: #0056b3; --bg: #f4f7f6; --card: #fff; --text: #333; --muted: #666; --border: #e1e4e8;
@@ -213,6 +222,7 @@ export async function onRequestGet(context) {
                 .print-btn:hover { background: rgba(255,255,255,0.3); }
                 .bt-btn { background: #10b981; border: 1px solid white; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
                 .bt-btn:hover { background: #059669; }
+                .bt-btn:disabled { background: #ccc; cursor: not-allowed; }
 
                 .status-banner { text-align: center; padding: 1rem; border-bottom: 2px solid; font-weight: 500; }
                 .lost-banner { background: var(--lost-bg); color: var(--lost-text); border-color: #ef4444; }
@@ -308,18 +318,22 @@ export async function onRequestGet(context) {
                 </div>
             </div>
 
-            <script type="module">
-                // Dynamischer Import der Bibliothek direkt aus dem GitHub Repository via esm.sh
-                import { Printer, WebBluetoothTransport, Profiles } from 'https://esm.sh/gh/tomladder/thermoprint/packages/core';
-
+            <script>
                 document.getElementById('btPrintBtn').addEventListener('click', async () => {
                     const btn = document.getElementById('btPrintBtn');
+                    
+                    if (!window.ThermoPrint) {
+                        alert('Die Drucker-Bibliothek wird noch geladen. Bitte warte einen Moment.');
+                        return;
+                    }
+
                     if (!navigator.bluetooth) {
                         alert('Web Bluetooth wird von diesem Browser nicht unterstützt.');
                         return;
                     }
 
                     try {
+                        btn.disabled = true;
                         btn.innerText = 'Verbinde...';
                         
                         const device = await navigator.bluetooth.requestDevice({
@@ -344,20 +358,24 @@ export async function onRequestGet(context) {
 
                         btn.innerText = 'Drucke...';
                         
-                        // Nutzung der importierten Module
-                        const transport = new WebBluetoothTransport(device);
+                        // Nutzung des importierten window.ThermoPrint Objekts
+                        const transport = new window.ThermoPrint.WebBluetoothTransport(device);
                         await transport.connect();
                         
-                        const printer = new Printer(transport, Profiles.p12);
+                        const printer = new window.ThermoPrint.Printer(transport, window.ThermoPrint.Profiles.p12);
                         await printer.printImage(imageData);
                         
                         btn.innerText = 'Erfolgreich!';
-                        setTimeout(() => btn.innerText = 'Bluetooth Print', 3000);
+                        setTimeout(() => {
+                            btn.innerText = 'Bluetooth Print';
+                            btn.disabled = false;
+                        }, 3000);
 
                     } catch (error) {
                         console.error('Bluetooth/Print-Fehler:', error);
                         alert('Fehler beim Drucken: ' + error.message);
                         btn.innerText = 'Bluetooth Print';
+                        btn.disabled = false;
                     }
                 });
             </script>
