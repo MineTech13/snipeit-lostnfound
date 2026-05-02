@@ -72,7 +72,10 @@ export async function onRequestGet(context) {
     const assetTag = context.params.assetTag;
     const env = context.env;
     const requestUrl = new URL(context.request.url);
-    const hostUrl = requestUrl.origin;
+    const hostUrl = env.BASE_URL ? env.BASE_URL.replace(/\/$/, '') : requestUrl.origin;
+    
+    // Prüfe, ob ?label in der URL steht
+    const showLabelUI = requestUrl.searchParams.has('label');
 
     if (!assetTag || assetTag.length === 0 || assetTag[0] === "") {
         return new Response(getSearchPageHtml(), { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
@@ -204,8 +207,7 @@ export async function onRequestGet(context) {
                 .card { background: var(--card); border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 2rem; }
                 .card-header { background: var(--primary); color: white; padding: 1.5rem; text-align: center; position: relative; }
                 
-                .print-actions { position: absolute; top: 1.5rem; right: 1.5rem; }
-                .bt-btn { background: #10b981; border: 1px solid white; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+                .bt-btn { background: #10b981; border: 1px solid white; color: white; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 500; text-decoration: none; }
                 .bt-btn:hover { background: #059669; }
 
                 .status-banner { text-align: center; padding: 1rem; border-bottom: 2px solid; font-weight: 500; }
@@ -217,8 +219,8 @@ export async function onRequestGet(context) {
                 .label { display: block; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.25rem; }
                 .value { font-size: 1.1rem; font-weight: 500; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
                 
-                .actions { text-align: center; margin-bottom: 2rem; width: 100%; max-width: 600px; display: flex; justify-content: space-between; }
-                .btn-secondary { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 8px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+                .actions { text-align: center; margin-bottom: 2rem; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+                .btn-secondary { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 10px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 0.95rem; }
 
                 .preview-box {
                     background: var(--card);
@@ -227,7 +229,14 @@ export async function onRequestGet(context) {
                     padding: 1.5rem;
                     text-align: center;
                     width: 100%;
+                    /* Wird über JS sichtbar gemacht, wenn ?label vorhanden ist */
+                    display: none; 
                 }
+                
+                .preview-box.active { display: block; }
+                .dl-button.active { display: inline-block; }
+                .dl-button { display: none; }
+
                 .preview-box h2 {
                     font-size: 1rem;
                     color: var(--muted);
@@ -252,9 +261,6 @@ export async function onRequestGet(context) {
                     <div class="card-header">
                         <h1>Device Information</h1>
                         <p>Tag: ${targetTag}</p>
-                        <div class="print-actions">
-                            <button class="bt-btn" onclick="downloadLabelPNG()">Download 15mm Label</button>
-                        </div>
                     </div>
                     ${bannerHtml}
                     <div class="card-body">
@@ -263,7 +269,7 @@ export async function onRequestGet(context) {
                     </div>
                 </div>
 
-                <div class="preview-box">
+                <div class="preview-box ${showLabelUI ? 'active' : ''}">
                     <h2>Live Label Preview (15mm)</h2>
                     <canvas id="renderCanvas" width="730" height="180"></canvas>
                 </div>
@@ -271,6 +277,7 @@ export async function onRequestGet(context) {
 
             <div class="actions screen-only">
                 <a href="/" class="btn-secondary">Search Another Asset</a>
+                <button class="bt-btn dl-button ${showLabelUI ? 'active' : ''}" onclick="downloadLabelPNG()">Download 15mm Label</button>
             </div>
 
             <script>
@@ -287,18 +294,14 @@ export async function onRequestGet(context) {
                     
                     const dmSize = 135; 
                     const dmPaddingTop = 5;
-                    const dmX = 8; // Näher an den linken Rand gerückt
+                    const dmX = 8; 
                     
-                    // --- NEUE POSITIONIERUNG ---
-                    // Text startet jetzt direkt neben der DataMatrix (dmX + dmSize + kleiner Abstand)
-                    const textX = dmX + dmSize + 5; // = 148 (Vorher 160)
+                    const textX = dmX + dmSize + 5; 
                     const qrSize = 170;
                     const qrX = canvasWidth - qrSize - 5; 
                     const qrY = 5;
                     
-                    // Textbreite ist der Platz zwischen Text-Start und QR-Code-Start
-                    const textWidth = qrX - textX - 10; // Gibt dem Text maximalen Raum ohne den QR Code zu berühren
-                    // ---------------------------
+                    const textWidth = qrX - textX - 10; 
 
                     const drawBarcode = (type, text, x, y, w, h) => {
                         const tempCanvas = document.createElement('canvas');
@@ -324,38 +327,47 @@ export async function onRequestGet(context) {
                     ctx.font = 'bold 24px Arial, sans-serif';
                     ctx.fillText('${targetTag}', dmX + (dmSize / 2), dmSize + dmPaddingTop + 5, dmSize + 20);
 
-                    // Mitte: Dynamischer Textblock
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle'; 
                     
-                    const hasAssetName = '${assetName || ''}' !== '';
                     const lines = [];
+                    const company = '${company || ''}'.trim();
+                    if (company) lines.push({ text: 'Property of ' + company, isBold: true });
                     
-                    lines.push({ text: 'Property of ${company || 'Organization'}', isBold: true });
-                    if (hasAssetName) {
-                        lines.push({ text: '${assetName || ''}', isBold: false });
-                    }
-                    lines.push({ text: '${serial || 'No Serial'}', isBold: false });
-                    lines.push({ text: '${manufacturerModelStr}', isBold: false });
+                    const assetName = '${assetName || ''}'.trim();
+                    if (assetName) lines.push({ text: assetName, isBold: false });
+                    
+                    const serial = '${serial || ''}'.trim();
+                    if (serial) lines.push({ text: serial, isBold: false });
+                    
+                    const mfgModel = '${manufacturerModelStr}'.trim();
+                    if (mfgModel) lines.push({ text: mfgModel, isBold: false });
 
                     const lineCount = lines.length;
-                    const ySpacing = canvasHeight / lineCount; 
-                    const fontSize = lineCount === 4 ? 36 : 44; 
-                    
-                    lines.forEach((line, index) => {
-                        ctx.font = (line.isBold ? 'bold ' : '') + fontSize + 'px Arial, sans-serif';
-                        const yPos = (ySpacing * index) + (ySpacing / 2);
-                        ctx.fillText(line.text, textX, yPos, textWidth);
-                    });
+                    if (lineCount > 0) {
+                        const ySpacing = canvasHeight / lineCount; 
+                        let fontSize = 44;
+                        if (lineCount === 4) fontSize = 36;
+                        if (lineCount === 2) fontSize = 52;
+                        if (lineCount === 1) fontSize = 64;
+                        
+                        lines.forEach((line, index) => {
+                            ctx.font = (line.isBold ? 'bold ' : '') + fontSize + 'px Arial, sans-serif';
+                            const yPos = (ySpacing * index) + (ySpacing / 2);
+                            ctx.fillText(line.text, textX, yPos, textWidth);
+                        });
+                    }
 
-                    // Rechts: QR Code für Lost & Found
                     const lostAndFoundUrl = '${hostUrl}/${targetTag}';
                     drawBarcode('qrcode', lostAndFoundUrl, qrX, qrY, qrSize, qrSize);
                 }
 
-                window.addEventListener('load', () => {
-                    setTimeout(renderLabelToCanvas, 100);
-                });
+                // Generiere Canvas-Bild nur, wenn wir das UI auch zeigen
+                if (${showLabelUI}) {
+                    window.addEventListener('load', () => {
+                        setTimeout(renderLabelToCanvas, 100);
+                    });
+                }
 
                 function downloadLabelPNG() {
                     const canvas = document.getElementById('renderCanvas');
