@@ -179,10 +179,23 @@ export async function onRequestGet(context) {
 
         let bannerHtml = isLost ? `<div class="status-banner lost-banner"><strong>⚠️ ATTENTION:</strong> This device has been reported as LOST.</div>` : '';
 
+        // Erweiterte Fallback-Logik für Manufacturer | Model / Model Number
         let manufacturerModelStr = '';
-        if (manufacturer && rawModelNumber) { manufacturerModelStr = `${manufacturer} | ${rawModelNumber}`; } 
-        else if (manufacturer) { manufacturerModelStr = manufacturer; } 
-        else if (rawModelNumber) { manufacturerModelStr = rawModelNumber; }
+        if (manufacturer) {
+            if (rawModelNumber) {
+                manufacturerModelStr = `${manufacturer} | ${rawModelNumber}`;
+            } else if (modelName) {
+                manufacturerModelStr = `${manufacturer} | ${modelName}`;
+            } else {
+                manufacturerModelStr = manufacturer;
+            }
+        } else {
+            if (rawModelNumber) {
+                manufacturerModelStr = rawModelNumber;
+            } else if (modelName) {
+                manufacturerModelStr = modelName;
+            }
+        }
 
         const html = `
         <!DOCTYPE html>
