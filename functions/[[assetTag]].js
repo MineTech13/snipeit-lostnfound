@@ -178,20 +178,14 @@ export async function onRequestGet(context) {
 
         let bannerHtml = isLost ? `<div class="status-banner lost-banner"><strong>⚠️ ATTENTION:</strong> This device has been reported as LOST.</div>` : '';
 
-        // Barcode Generierung
         const snipeItAssetUrl = `${env.SNIPEIT_URL}/hardware/${assetId}`;
         const dataMatrixUrl = `https://bwipjs-api.metafloor.com/?bcid=datamatrix&text=${encodeURIComponent(snipeItAssetUrl)}`;
         const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=${encodeURIComponent(hostUrl + '/' + targetTag)}`;
 
-        // Zusammensetzen der Manufacturer/Model Zeile
         let manufacturerModelStr = '';
-        if (manufacturer && modelName) {
-            manufacturerModelStr = `${manufacturer} | ${modelName}`;
-        } else if (manufacturer) {
-            manufacturerModelStr = manufacturer;
-        } else if (modelName) {
-            manufacturerModelStr = modelName;
-        }
+        if (manufacturer && modelName) { manufacturerModelStr = `${manufacturer} | ${modelName}`; } 
+        else if (manufacturer) { manufacturerModelStr = manufacturer; } 
+        else if (modelName) { manufacturerModelStr = modelName; }
 
         const html = `
         <!DOCTYPE html>
@@ -200,6 +194,7 @@ export async function onRequestGet(context) {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Asset Info: ${targetTag}</title>
+            <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
             <style>
                 :root { 
                     --primary: #0056b3; --bg: #f4f7f6; --card: #fff; --text: #333; --muted: #666; --border: #e1e4e8;
@@ -209,7 +204,6 @@ export async function onRequestGet(context) {
                 * { box-sizing: border-box; margin: 0; padding: 0; }
                 body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 1rem; display: flex; flex-direction: column; align-items: center; }
                 
-                /* Web UI Styles */
                 .screen-only { display: block; width: 100%; max-width: 600px; margin-top: 2rem; }
                 .card { background: var(--card); border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); overflow: hidden; }
                 .card-header { background: var(--primary); color: white; padding: 1.5rem; text-align: center; position: relative; }
@@ -247,37 +241,32 @@ export async function onRequestGet(context) {
 
                 @media (min-width: 600px) { .data-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; } }
                 
-                /* --- PRINT STYLES --- */
+                .label-template { 
+                    display: flex; 
+                    flex-direction: row; 
+                    align-items: center; 
+                    justify-content: space-between;
+                    width: 89mm; 
+                    height: 36mm; 
+                    padding: 3mm;
+                    box-sizing: border-box;
+                    font-family: -apple-system, sans-serif;
+                    color: black;
+                    background: white;
+                }
+                .print-left { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 20mm; }
+                .print-left img { width: 18mm; height: 18mm; object-fit: contain; }
+                .print-tag { font-size: 8pt; font-weight: bold; margin-top: 2px; text-align: center; }
+                .print-center { flex-grow: 1; padding: 0 4mm; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+                .print-text-line { font-size: 8pt; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40mm; }
+                .print-right { width: 22mm; height: 22mm; flex-shrink: 0; }
+                .print-right img { width: 100%; height: 100%; object-fit: contain; }
+
                 @media print {
                     @page { size: 89mm 36mm; margin: 0; }
                     body { background: white; padding: 0; margin: 0; }
                     .screen-only, .actions { display: none !important; }
-                    
-                    /* Das zu druckende Label (wird auch für Bluetooth-Canvas verwendet) */
-                    .print-only { 
-                        display: flex; 
-                        flex-direction: row; 
-                        align-items: center; 
-                        justify-content: space-between;
-                        width: 89mm; 
-                        height: 36mm; 
-                        padding: 3mm;
-                        box-sizing: border-box;
-                        page-break-after: avoid;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        color: black;
-                        background: white;
-                    }
-                    
-                    .print-left { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 20mm; }
-                    .print-left img { width: 18mm; height: 18mm; object-fit: contain; }
-                    .print-tag { font-size: 8pt; font-weight: bold; margin-top: 2px; text-align: center; }
-                    
-                    .print-center { flex-grow: 1; padding: 0 4mm; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
-                    .print-text-line { font-size: 8pt; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40mm; }
-                    
-                    .print-right { width: 22mm; height: 22mm; flex-shrink: 0; }
-                    .print-right img { width: 100%; height: 100%; object-fit: contain; }
+                    .print-only { display: flex; page-break-after: avoid; }
                 }
             </style>
         </head>
@@ -304,7 +293,7 @@ export async function onRequestGet(context) {
                 <a href="/" class="btn-secondary">Search Another Asset</a>
             </div>
 
-            <div class="print-only" id="labelNode">
+            <div class="print-only label-template" id="labelNode">
                 <div class="print-left">
                     <img src="${dataMatrixUrl}" alt="DataMatrix Snipe-IT" crossorigin="anonymous" />
                     <div class="print-tag">${targetTag}</div>
@@ -319,35 +308,56 @@ export async function onRequestGet(context) {
                 </div>
             </div>
 
-            <script>
+            <script type="module">
+                // Dynamischer Import der Bibliothek direkt aus dem GitHub Repository via esm.sh
+                import { Printer, WebBluetoothTransport, Profiles } from 'https://esm.sh/gh/tomladder/thermoprint/packages/core';
+
                 document.getElementById('btPrintBtn').addEventListener('click', async () => {
+                    const btn = document.getElementById('btPrintBtn');
                     if (!navigator.bluetooth) {
                         alert('Web Bluetooth wird von diesem Browser nicht unterstützt.');
                         return;
                     }
 
                     try {
-                        // Web Bluetooth Anforderung an Geräte mit Prefix "P12" oder "Marklife"
+                        btn.innerText = 'Verbinde...';
+                        
                         const device = await navigator.bluetooth.requestDevice({
-                            filters: [
-                                { namePrefix: 'P12' },
-                                { namePrefix: 'Marklife' }
-                            ],
-                            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // Generische Serial Service UUID
+                            filters: [{ namePrefix: 'P12' }, { namePrefix: 'Marklife' }],
+                            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
                         });
                         
                         console.log('Bluetooth-Gerät ausgewählt:', device.name);
+                        btn.innerText = 'Rendere Label...';
+
+                        const labelNode = document.getElementById('labelNode');
+                        labelNode.style.display = 'flex';
                         
-                        // Hier fehlt die kompilierte thermoprint-Bibliothek.
-                        // Um die DOM-Node 'labelNode' an den Drucker zu senden, muss das Bild gerastert
-                        // (packages/core/src/image/pipeline.ts) und über das P12-Profil 
-                        // (packages/core/src/device/profiles/p12.ts) codiert werden.
+                        const canvas = await html2canvas(labelNode, { 
+                            scale: 2, 
+                            useCORS: true 
+                        });
                         
-                        alert('Verbunden mit: ' + device.name + '\\n\\nUm den Druckvorgang abzuschließen, muss das thermoprint-Paket kompiliert und hier geladen werden, um die ESC/POS bzw. P12-Befehle zu generieren.');
+                        labelNode.style.display = 'none';
+                        const ctx = canvas.getContext('2d');
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        btn.innerText = 'Drucke...';
+                        
+                        // Nutzung der importierten Module
+                        const transport = new WebBluetoothTransport(device);
+                        await transport.connect();
+                        
+                        const printer = new Printer(transport, Profiles.p12);
+                        await printer.printImage(imageData);
+                        
+                        btn.innerText = 'Erfolgreich!';
+                        setTimeout(() => btn.innerText = 'Bluetooth Print', 3000);
 
                     } catch (error) {
-                        console.error('Bluetooth-Fehler:', error);
-                        alert('Bluetooth-Verbindung fehlgeschlagen oder abgebrochen.');
+                        console.error('Bluetooth/Print-Fehler:', error);
+                        alert('Fehler beim Drucken: ' + error.message);
+                        btn.innerText = 'Bluetooth Print';
                     }
                 });
             </script>
