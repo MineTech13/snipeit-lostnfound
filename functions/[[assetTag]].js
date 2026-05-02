@@ -168,18 +168,28 @@ export async function onRequestGet(context) {
             .map(row => `<div class="data-row"><span class="label">${row.label}</span><span class="value">${row.value}</span></div>`)
             .join('');
 
+        // NEU: Verbessertes HTML für den Contact Bereich
         let contactHtml = '';
         if (showContact) {
             if (customContactText) {
-                contactHtml = `<div class="contact-section"><h2>Contact Information</h2><p>${customContactText}</p></div>`;
+                contactHtml = `<div class="contact-section">
+                    <h2>Contact Information</h2>
+                    <p class="contact-desc">${customContactText}</p>
+                </div>`;
             } else if (supportEmail || supportPhone) {
-                contactHtml = `<div class="contact-section"><h2>Contact Owner</h2><p>Please contact us:</p>${supportEmail ? `<p><strong>Email:</strong> <a href="mailto:${supportEmail}">${supportEmail}</a></p>` : ''}${supportPhone ? `<p><strong>Phone:</strong> <a href="tel:${supportPhone}">${supportPhone}</a></p>` : ''}</div>`;
+                contactHtml = `<div class="contact-section">
+                    <h2>Contact Owner</h2>
+                    <p class="contact-desc">Please reach out to us for support or if you found this device.</p>
+                    <div class="contact-details">
+                        ${supportEmail ? `<div class="contact-item"><span class="contact-label">Email</span> <a href="mailto:${supportEmail}">${supportEmail}</a></div>` : ''}
+                        ${supportPhone ? `<div class="contact-item"><span class="contact-label">Phone</span> <a href="tel:${supportPhone}">${supportPhone}</a></div>` : ''}
+                    </div>
+                </div>`;
             }
         }
 
         let bannerHtml = isLost ? `<div class="status-banner lost-banner"><strong>⚠️ ATTENTION:</strong> This device has been reported as LOST.</div>` : '';
 
-        // Erweiterte Fallback-Logik für Manufacturer | Model / Model Number
         let manufacturerModelStr = '';
         if (manufacturer) {
             if (rawModelNumber) {
@@ -238,6 +248,54 @@ export async function onRequestGet(context) {
                 .meta-undeployable { background: var(--undeployable); }
                 .meta-archived { background: var(--archived); }
                 
+                /* NEU: Gestylter Contact Bereich */
+                .contact-section { 
+                    margin-top: 2rem; 
+                    padding: 1.5rem; 
+                    background: rgba(0, 86, 179, 0.04); 
+                    border: 1px solid rgba(0, 86, 179, 0.1); 
+                    border-radius: 10px; 
+                    text-align: center; 
+                }
+                .contact-section h2 { 
+                    color: var(--primary); 
+                    font-size: 1.1rem; 
+                    margin-bottom: 0.5rem; 
+                    text-transform: uppercase; 
+                    letter-spacing: 0.5px;
+                }
+                .contact-desc { 
+                    color: var(--muted); 
+                    font-size: 0.95rem; 
+                    margin-bottom: 1.25rem; 
+                    line-height: 1.4;
+                }
+                .contact-details { 
+                    display: flex; 
+                    flex-direction: column; 
+                    gap: 0.75rem; 
+                }
+                .contact-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .contact-label {
+                    font-size: 0.75rem;
+                    color: var(--muted);
+                    text-transform: uppercase;
+                    margin-bottom: 2px;
+                }
+                .contact-item a {
+                    color: var(--primary);
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                    text-decoration: none;
+                }
+                .contact-item a:hover {
+                    text-decoration: underline;
+                }
+
                 .actions { text-align: center; margin-bottom: 2rem; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
                 .btn-secondary { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 10px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 0.95rem; }
 
