@@ -179,10 +179,11 @@ export async function onRequestGet(context) {
 
         let bannerHtml = isLost ? `<div class="status-banner lost-banner"><strong>⚠️ ATTENTION:</strong> This device has been reported as LOST.</div>` : '';
 
+        // Änderung: Nutze rawModelNumber anstatt modelName für das Label
         let manufacturerModelStr = '';
-        if (manufacturer && modelName) { manufacturerModelStr = `${manufacturer} | ${modelName}`; } 
+        if (manufacturer && rawModelNumber) { manufacturerModelStr = `${manufacturer} | ${rawModelNumber}`; } 
         else if (manufacturer) { manufacturerModelStr = manufacturer; } 
-        else if (modelName) { manufacturerModelStr = modelName; }
+        else if (rawModelNumber) { manufacturerModelStr = rawModelNumber; }
 
         const html = `
         <!DOCTYPE html>
@@ -269,7 +270,7 @@ export async function onRequestGet(context) {
 
                 <div class="preview-box ${showLabelUI ? 'active' : ''}">
                     <h2>Live Label Preview (15mm)</h2>
-                    <canvas id="renderCanvas" width="730" height="180"></canvas>
+                    <canvas id="renderCanvas" width="720" height="180"></canvas>
                 </div>
             </div>
 
@@ -287,7 +288,7 @@ export async function onRequestGet(context) {
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = 'black';
 
-                    const canvasWidth = 730; 
+                    const canvasWidth = 720; 
                     const canvasHeight = 180;
                     
                     const dmSize = 135; 
@@ -332,12 +333,14 @@ export async function onRequestGet(context) {
                     const company = '${company || ''}'.trim();
                     if (company) lines.push({ text: 'Property of ' + company, isBold: true });
                     
+                    // Zeigt den Asset-Namen an (nicht den Modellnamen)
                     const assetName = '${assetName || ''}'.trim();
                     if (assetName) lines.push({ text: assetName, isBold: false });
                     
                     const serial = '${serial || ''}'.trim();
                     if (serial) lines.push({ text: serial, isBold: false });
                     
+                    // manufacturerModelStr beinhaltet nun den Hersteller und die rawModelNumber
                     const mfgModel = '${manufacturerModelStr}'.trim();
                     if (mfgModel) lines.push({ text: mfgModel, isBold: false });
 
