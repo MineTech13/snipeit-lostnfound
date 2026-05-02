@@ -37,7 +37,7 @@ function getSearchPageHtml() {
         <div class="container">
             <div class="card">
                 <h1>Asset Lookup</h1>
-                <form onsubmit="event.preventDefault(); window.location.href='/' + document.getElementById('tagInput').value;">
+                <form onsubmit="event.preventDefault(); window.location.href='/' + document.getElementById('tagInput').value + window.location.search;">
                     <div class="search-box">
                         <input type="text" id="tagInput" placeholder="Enter Asset Tag (e.g. 12345)" required>
                         <button type="submit">Go</button>
@@ -56,7 +56,7 @@ function getSearchPageHtml() {
                     tag = tag.split('/').pop();
                 }
                 html5QrcodeScanner.clear();
-                window.location.href = "/" + tag;
+                window.location.href = "/" + tag + window.location.search;
             }
 
             let html5QrcodeScanner = new Html5QrcodeScanner(
@@ -74,7 +74,6 @@ export async function onRequestGet(context) {
     const requestUrl = new URL(context.request.url);
     const hostUrl = env.BASE_URL ? env.BASE_URL.replace(/\/$/, '') : requestUrl.origin;
     
-    // Prüfe, ob ?label in der URL steht
     const showLabelUI = requestUrl.searchParams.has('label');
 
     if (!assetTag || assetTag.length === 0 || assetTag[0] === "") {
@@ -229,7 +228,6 @@ export async function onRequestGet(context) {
                     padding: 1.5rem;
                     text-align: center;
                     width: 100%;
-                    /* Wird über JS sichtbar gemacht, wenn ?label vorhanden ist */
                     display: none; 
                 }
                 
@@ -276,7 +274,7 @@ export async function onRequestGet(context) {
             </div>
 
             <div class="actions screen-only">
-                <a href="/" class="btn-secondary">Search Another Asset</a>
+                <a href="#" onclick="event.preventDefault(); window.location.href='/' + window.location.search;" class="btn-secondary">Search Another Asset</a>
                 <button class="bt-btn dl-button ${showLabelUI ? 'active' : ''}" onclick="downloadLabelPNG()">Download 15mm Label</button>
             </div>
 
@@ -362,7 +360,6 @@ export async function onRequestGet(context) {
                     drawBarcode('qrcode', lostAndFoundUrl, qrX, qrY, qrSize, qrSize);
                 }
 
-                // Generiere Canvas-Bild nur, wenn wir das UI auch zeigen
                 if (${showLabelUI}) {
                     window.addEventListener('load', () => {
                         setTimeout(renderLabelToCanvas, 100);
