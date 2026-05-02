@@ -179,7 +179,6 @@ export async function onRequestGet(context) {
 
         let bannerHtml = isLost ? `<div class="status-banner lost-banner"><strong>⚠️ ATTENTION:</strong> This device has been reported as LOST.</div>` : '';
 
-        // Änderung: Nutze rawModelNumber anstatt modelName für das Label
         let manufacturerModelStr = '';
         if (manufacturer && rawModelNumber) { manufacturerModelStr = `${manufacturer} | ${rawModelNumber}`; } 
         else if (manufacturer) { manufacturerModelStr = manufacturer; } 
@@ -199,6 +198,7 @@ export async function onRequestGet(context) {
                 :root { 
                     --primary: #0056b3; --bg: #f4f7f6; --card: #fff; --text: #333; --muted: #666; --border: #e1e4e8;
                     --lost-bg: #fee2e2; --lost-text: #b91c1c;
+                    --deployable: #10b981; --deployed: #3b82f6; --pending: #f59e0b; --undeployable: #ef4444; --archived: #6b7280;
                 }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
                 body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 1rem; display: flex; flex-direction: column; align-items: center; }
@@ -218,6 +218,12 @@ export async function onRequestGet(context) {
                 .data-row:last-child { border-bottom: none; }
                 .label { display: block; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.25rem; }
                 .value { font-size: 1.1rem; font-weight: 500; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+                .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; color: white; text-transform: uppercase; }
+                .meta-deployable { background: var(--deployable); }
+                .meta-deployed { background: var(--deployed); }
+                .meta-pending { background: var(--pending); }
+                .meta-undeployable { background: var(--undeployable); }
+                .meta-archived { background: var(--archived); }
                 
                 .actions { text-align: center; margin-bottom: 2rem; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
                 .btn-secondary { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 10px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 0.95rem; }
@@ -333,14 +339,12 @@ export async function onRequestGet(context) {
                     const company = '${company || ''}'.trim();
                     if (company) lines.push({ text: 'Property of ' + company, isBold: true });
                     
-                    // Zeigt den Asset-Namen an (nicht den Modellnamen)
                     const assetName = '${assetName || ''}'.trim();
                     if (assetName) lines.push({ text: assetName, isBold: false });
                     
                     const serial = '${serial || ''}'.trim();
                     if (serial) lines.push({ text: serial, isBold: false });
                     
-                    // manufacturerModelStr beinhaltet nun den Hersteller und die rawModelNumber
                     const mfgModel = '${manufacturerModelStr}'.trim();
                     if (mfgModel) lines.push({ text: mfgModel, isBold: false });
 
