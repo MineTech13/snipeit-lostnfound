@@ -26,29 +26,37 @@ Designed to be deployed for **free** on [Cloudflare Pages](https://pages.cloudfl
 ## Local Development
 
 1. **Clone the repository:**
-   \`\`\`bash
-   git clone https://github.com/yourusername/snipeit-lostnfound.git
+   ```bash
+   git clone [https://github.com/yourusername/snipeit-lostnfound.git](https://github.com/yourusername/snipeit-lostnfound.git)
    cd snipeit-lostnfound
-   \`\`\`
+
+```
 
 2. **Install dependencies:**
-   \`\`\`bash
-   npm install
-   \`\`\`
+```bash
+npm install
+
+```
+
 
 3. **Configure local environment variables:**
-   Create a file named \`.dev.vars\` in the root directory and add your Snipe-IT credentials:
-   \`\`\`env
-   SNIPEIT_URL=https://your-snipeit-instance.com
-   SNIPEIT_TOKEN=your_personal_access_token
-   \`\`\`
-   *(Note: Never commit this file. It is ignored by `.gitignore`.)*
+Create a file named `.dev.vars` in the root directory and add your Snipe-IT credentials:
+```env
+SNIPEIT_URL=[https://your-snipeit-instance.com](https://your-snipeit-instance.com)
+SNIPEIT_TOKEN=your_personal_access_token
 
+```
+
+
+*(Note: Never commit this file. It is ignored by `.gitignore`.)*
 4. **Start the local development server:**
-   \`\`\`bash
-   npm run dev
-   \`\`\`
-   Open \`http://localhost:3000/YOUR-ASSET-TAG\` in your browser to test.
+```bash
+npm run dev
+
+```
+
+
+Open `http://localhost:3000/YOUR-ASSET-TAG` in your browser to test.
 
 ## Deployment to Cloudflare Pages
 
@@ -59,12 +67,16 @@ Deployment is completely automated via Git integration.
 3. Click **Create** -> **Pages** -> **Connect to Git**.
 4. Select your repository.
 5. In the build settings:
-   * **Framework preset:** None
-   * **Build command:** *(leave empty)*
-   * **Build output directory:** `public` (or leave empty if you don't use static assets)
+* **Framework preset:** None
+* **Build command:** *(leave empty)*
+* **Build output directory:** `public` (or leave empty if you don't use static assets)
+
+
 6. **Crucial Step:** Scroll down to **Environment variables (advanced)** and add:
-   * `SNIPEIT_URL` (e.g., `https://your-snipeit-instance.com`)
-   * `SNIPEIT_TOKEN` (your secret API token)
+* `SNIPEIT_URL` (e.g., `https://your-snipeit-instance.com`)
+* `SNIPEIT_TOKEN` (your secret API token)
+
+
 7. Click **Save and Deploy**.
 
 Cloudflare will now automatically deploy your function. Whenever you push changes to your main branch, Cloudflare will update the live site within seconds.
