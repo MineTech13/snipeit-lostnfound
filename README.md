@@ -71,4 +71,5 @@ Cloudflare will now automatically deploy your function. Whenever you push change
 
 ## License
 
-MIT
+This project is licensed under the **MIT License**.
+Commercial and private use, modification, and distribution are permitted. However, the original copyright notice and the permission notice must be included in all copies or substantial portions of the software (Attribution required). See the `LICENSE` file for full details.
