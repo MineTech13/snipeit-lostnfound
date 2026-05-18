@@ -69,6 +69,11 @@ Deployment is completely automated via Git integration.
 
 Cloudflare will now automatically deploy your function. Whenever you push changes to your main branch, Cloudflare will update the live site within seconds.
 
+## Disclaimer
+
+**AI-Generated Code**
+Please note that the code in this repository was generated and programmed with the assistance of Artificial Intelligence (AI). While the code has been tested for its intended functionality, it is highly recommended that you review and understand the code before deploying it to production environments.
+
 ## License
 
 This project is licensed under the **MIT License**.
