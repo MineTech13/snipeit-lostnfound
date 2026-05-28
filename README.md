@@ -27,33 +27,32 @@ Designed to be deployed for **free** on [Cloudflare Pages](https://pages.cloudfl
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/yourusername/snipeit-lostnfound.git](https://github.com/yourusername/snipeit-lostnfound.git)
+   git clone https://github.com/yourusername/snipeit-lostnfound.git
    cd snipeit-lostnfound
-
-```
+   ```
 
 2. **Install dependencies:**
-```bash
-npm install
-
-```
+   ```bash
+   npm install
+   
+   ```
 
 
 3. **Configure local environment variables:**
 Create a file named `.dev.vars` in the root directory and add your Snipe-IT credentials:
-```env
-SNIPEIT_URL=[https://your-snipeit-instance.com](https://your-snipeit-instance.com)
-SNIPEIT_TOKEN=your_personal_access_token
-
-```
+   ```env
+   SNIPEIT_URL=https://your-snipeit-instance.com
+   SNIPEIT_TOKEN=your_personal_access_token
+   
+   ```
 
 
 *(Note: Never commit this file. It is ignored by `.gitignore`.)*
 4. **Start the local development server:**
-```bash
-npm run dev
-
-```
+   ```bash
+   npm run dev
+   
+   ```
 
 
 Open `http://localhost:3000/YOUR-ASSET-TAG` in your browser to test.
