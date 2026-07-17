@@ -1,6 +1,6 @@
 // src/templates.js
 
-export function renderHomePage() {
+export function getSearchPageHtml() {
     return `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -269,8 +269,7 @@ export function renderHomePage() {
 </html>`;
 }
 
-export function renderAssetPage(assetData) {
-    // Platzhalter für die Darstellung der Asset-Informationen
+export function getAssetPageHtml(assetData) {
     return `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -293,8 +292,7 @@ export function renderAssetPage(assetData) {
 </html>`;
 }
 
-export function renderErrorPage(message) {
-    // Platzhalter für Fehlerdarstellungen
+export function getErrorPageHtml(message) {
     return `<!DOCTYPE html>
 <html lang="de">
 <head>
